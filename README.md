@@ -4,7 +4,7 @@ Yael is a header-only c++17 event library with the focus on simplicity and ease 
 
 ## Usage
 
-All you have to do is include the headers and add a event_launcher and a event_sink to your class
+All you have to do is include the headers and add an event_launcher and an event_sink to your class...
 
 ```
 #include "include/yael.h"
