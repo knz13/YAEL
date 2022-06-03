@@ -1,4 +1,4 @@
-#include "../yael.h"
+#include "../include/yael.h"
 #include "catch2/catch_test_macros.hpp"
 
 
