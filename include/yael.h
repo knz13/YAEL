@@ -20,7 +20,7 @@ struct event_receiver;
 
     struct event_receiver {
 
-        ~event_receiver() {
+        virtual ~event_receiver() {
             if (m_SubscribedEvents.size() == 0) {
                 return;
             }
@@ -62,7 +62,7 @@ struct event_receiver;
         event_launcher() {
         };
 
-        ~event_launcher() {
+        virtual ~event_launcher() {
         }
 
         size_t NumberOfReceivers() const {
