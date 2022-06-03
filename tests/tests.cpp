@@ -170,6 +170,30 @@ TEST_CASE("Free function attachment") {
     REQUIRE(launcher.onVoidEvent().Disconnect(id));
     REQUIRE(launcher.onVoidEvent().NumberOfReceivers() == 0);
 
+}
+
+TEST_CASE("Many attachments") {
+    std::vector<TestReceiver> vec;
+    
+    {
+        TestLauncher launcher;
+        
+
+        for(int i = 0;i<70;i++){
+            TestReceiver& rec = vec.emplace_back();
+            launcher.onVoidEvent().Connect(&rec,[](yael::event_receiver* rec){
+                REQUIRE(rec->NumberOfSubscribedEvents() == 1);
+            });
+        }
+
+        REQUIRE(launcher.onVoidEvent().NumberOfReceivers() == 70);
+    }
+
+    for(auto& rec : vec){
+        REQUIRE(rec.NumberOfSubscribedEvents() == 0);
+    }
+    
+
 
 
 }
