@@ -27,6 +27,7 @@ struct event_receiver;
             auto it = m_SubscribedEvents.begin();
             while (it != m_SubscribedEvents.end()) {
                 it->second.m_DeleteFunc(it->first, std::hash<void*>()((void*)this));
+                m_SubscribedEvents.erase(it);
                 it = m_SubscribedEvents.begin();
             }
         }
