@@ -8,28 +8,47 @@
 
 namespace yael {
 struct event_receiver;
-    struct event_receiver_attachment_properties {
-        std::function<void(void*, size_t)> m_DeleteFunc;
-    };
 
 
     template<typename T>
     struct event_launcher;
     template<typename T>
     struct event_sink;
+    struct event_receiver_attachment_properties {
+        std::function<bool(void*, size_t)> m_DeleteFunc;
+        std::function<void(void*,event_receiver*)> m_CopyFunc;
+    };
+
+
+    template<typename T>
+    struct event_launcher_attachment_properties;
+
+    template<typename R,typename... Args>
+    struct event_launcher_attachment_properties<R(Args...)> {
+        std::function<R(Args&&...)> m_ExecutableFunc;
+        std::function<void(void*)> m_DisconnectingFunc;
+    };
 
     struct event_receiver {
+
+        event_receiver() {
+            
+        };
 
         virtual ~event_receiver() {
             if (m_SubscribedEvents.size() == 0) {
                 return;
             }
-            auto it = m_SubscribedEvents.begin();
-            while (it != m_SubscribedEvents.end()) {
-                it->second.m_DeleteFunc(it->first, std::hash<void*>()((void*)this));
-                it = m_SubscribedEvents.begin();
+            for (auto& [ptr, prop] : m_SubscribedEvents) {
+                prop.m_DeleteFunc(ptr, std::hash<void*>()((void*)this));
             }
         }
+
+        event_receiver(const event_receiver& other) {
+            for(auto& [handle,prop] : other.m_SubscribedEvents){
+                prop.m_CopyFunc(handle,this);
+            }
+        };
 
         template<typename T>
         bool IsSubscribedTo(event_sink<T> sink) {
@@ -42,6 +61,9 @@ struct event_receiver;
 
 
         event_receiver& operator=(const event_receiver& other) {
+            for(auto& [handle,prop] : other.m_SubscribedEvents){
+                prop.m_CopyFunc(handle,this);
+            }
             return *this;
         }
 
@@ -62,6 +84,11 @@ struct event_receiver;
         };
 
         virtual ~event_launcher() {
+            for (auto& [handle, prop] : m_Receivers) {
+                if (prop.m_DisconnectingFunc) {
+                    prop.m_DisconnectingFunc(this);
+                }
+            }
         }
 
         size_t NumberOfReceivers() const {
@@ -90,19 +117,19 @@ struct event_receiver;
         }
 
 
-        auto EmitEvent(Args... args) {
+        auto EmitEvent(Args&&... args) {
             if constexpr (std::is_same<R,void>::value) {
-                for (auto& [handle, func] : m_Receivers) {
-                    if (func) {
-                        (*func.get())(args...);
+                for (auto& [handle, properties] : m_Receivers) {
+                    if (properties.m_ExecutableFunc) {
+                        properties.m_ExecutableFunc(std::forward<Args...>(args)...);
                     }
                 }
             }
             else {
                 std::vector<R> vec;
-                for (auto& [handle, func] : m_Receivers) {
-                    if (func) {
-                        vec.push_back((*func.get())(args...));
+                for (auto& [handle, properties] : m_Receivers) {
+                    if (properties.m_ExecutableFunc) {
+                        vec.push_back(properties.m_ExecutableFunc(std::forward<Args...>(args)...));
                     }
                 }
                 return vec;
@@ -114,7 +141,10 @@ struct event_receiver;
         }
 
     private:
-        std::unordered_map<size_t, std::shared_ptr<std::function<R(Args...)>>> m_Receivers;
+
+        
+
+        std::unordered_map<size_t, event_launcher_attachment_properties<R(Args...)>> m_Receivers;
         size_t m_MyHash = std::hash<void*>()((void*)this);
 
         template<typename T>
@@ -132,35 +162,49 @@ struct event_receiver;
     struct event_sink<R(Args...)> {
         event_sink(event_launcher<R(Args...)>& sink) : m_Master(&sink) {};
 
-        size_t Connect(std::function<R(Args...)> windowFunc) {
+
+
+        size_t Connect(std::function<R(Args&&...)> windowFunc) {
             static int count = 1;
             size_t hash = std::hash<int>()(count);
             count++;
 
-            std::function<R(Args...)>* func = new std::function<R(Args...)>(windowFunc);
-            m_Master->m_Receivers[hash] = std::make_shared<std::function<R(Args...)>>(*func);
+            event_launcher_attachment_properties<R(Args...)> prop;
+
+            prop.m_ExecutableFunc = windowFunc;
+            
+            m_Master->m_Receivers[hash] = std::move(prop);
             return hash;
 
         }
 
-        void Connect(event_receiver* key, std::function<R(event_receiver*, Args...)> windowFunc) {
+        void Connect(event_receiver* key, std::function<R(event_receiver*, Args&&...)> windowFunc) {
 
             size_t hash = std::hash<void*>()((void*)key);
-            auto deleter = [=](std::function<R(Args...)>* func) {
-                key->m_SubscribedEvents.erase((void*)m_Master);
-                delete func;
+            
+            auto func = ([=](auto&&... args) {
+                return windowFunc(key, std::forward<Args...>(args)...);
+            });
+
+            event_launcher_attachment_properties<R(Args...)> masterProperties;
+
+            masterProperties.m_ExecutableFunc = func;
+            masterProperties.m_DisconnectingFunc = [=](void* master) {
+                key->m_SubscribedEvents.erase(master);
             };
 
-            auto func = new std::function<R(Args...)>([=](auto... args) {
-                return windowFunc(key, args...);
-            });
-            m_Master->m_Receivers[hash] = std::shared_ptr<std::function<R(Args...)>>(func, deleter);
+            m_Master->m_Receivers[hash] = std::move(masterProperties);
 
             event_receiver_attachment_properties prop;
-           
+
+            
+
+            prop.m_CopyFunc = [=](void* master,event_receiver* ptr){
+                event_sink<R(Args...)>(*(event_launcher<R(Args...)>*)master).Connect(ptr,windowFunc);
+            };
 
             prop.m_DeleteFunc = [](void* ptr, size_t hash) {
-                ((event_launcher<R(Args...)>*)(ptr))->DisconnectReceiver(hash);
+                return ((event_launcher<R(Args...)>*)(ptr))->DisconnectReceiver(hash);
             };
 
             key->m_SubscribedEvents[(void*)m_Master] = std::move(prop);

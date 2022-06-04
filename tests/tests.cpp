@@ -153,8 +153,8 @@ TEST_CASE("Copying Receiver") {
 
     receiverTwo = receiverOne;
 
-    REQUIRE(!receiverTwo.IsSubscribedTo(launcher.onVoidEvent()));
-    REQUIRE(launcher.m_VoidEvent.NumberOfReceivers() == 1);
+    REQUIRE(receiverTwo.IsSubscribedTo(launcher.onVoidEvent()));
+    REQUIRE(launcher.m_VoidEvent.NumberOfReceivers() == 2);
 
 
 }
@@ -192,8 +192,5 @@ TEST_CASE("Many attachments") {
     for(auto& rec : vec){
         REQUIRE(rec.NumberOfSubscribedEvents() == 0);
     }
-    
-
-
 
 }
