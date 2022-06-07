@@ -121,7 +121,7 @@ struct event_receiver;
             if constexpr (std::is_same<R,void>::value) {
                 for (auto& [handle, properties] : m_Receivers) {
                     if (properties.m_ExecutableFunc) {
-                        properties.m_ExecutableFunc(std::forward<Args...>(args)...);
+                        properties.m_ExecutableFunc(std::forward<Args...>(args));
                     }
                 }
             }
@@ -129,7 +129,7 @@ struct event_receiver;
                 std::vector<R> vec;
                 for (auto& [handle, properties] : m_Receivers) {
                     if (properties.m_ExecutableFunc) {
-                        vec.push_back(properties.m_ExecutableFunc(std::forward<Args...>(args)...));
+                        vec.push_back(properties.m_ExecutableFunc(std::forward<Args...>(args)));
                     }
                 }
                 return vec;
