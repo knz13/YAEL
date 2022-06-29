@@ -8,7 +8,7 @@ public:
     yael::event_sink<void()> onVoidEvent() {
         return {m_VoidEvent};
     }
-    yael::event_sink<void(int)> onVoidIntEvent(){
+    yael::event_sink<void(int&)> onVoidIntEvent(){
         return {m_VoidIntEvent};
     };
 
@@ -18,7 +18,7 @@ public:
 
 
     yael::event_launcher<void()> m_VoidEvent;
-    yael::event_launcher<void(int)> m_VoidIntEvent;
+    yael::event_launcher<void(int&)> m_VoidIntEvent;
     yael::event_launcher<int(std::string)> m_NonVoidEvent;
 
 
@@ -56,7 +56,8 @@ TEST_CASE("Event Testing With Receiver"){
 
         SECTION("Launching events"){
             launcher.m_VoidEvent.EmitEvent();
-            launcher.m_VoidIntEvent.EmitEvent(1);
+            int value = 1;
+            launcher.m_VoidIntEvent.EmitEvent(value);
             REQUIRE(launcher.m_NonVoidEvent.EmitEvent("my string")[0] == 1);
         }
         SECTION("Unsubscribing With One Receiver") {
