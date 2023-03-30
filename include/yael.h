@@ -25,10 +25,10 @@ struct event_receiver;
 
     template<typename R,typename... Args>
     struct event_launcher_attachment_properties<R(Args...)> {
-        std::function<R(Args&&...)> m_ExecutableFunc;
+        std::function<R(Args...)> m_ExecutableFunc;
         std::function<void(void*)> m_DisconnectingFunc;
     };
-
+    
     struct event_receiver {
 
         event_receiver() {
@@ -76,6 +76,8 @@ struct event_receiver;
         friend struct event_launcher;
     };
 
+    template<typename R, typename... Args>
+    struct event_sink<R(Args...)>;
 
     template<typename R, typename... Args>
     struct event_launcher<R(Args...)> {
@@ -90,6 +92,8 @@ struct event_receiver;
                 }
             }
         }
+
+        event_sink<R(Args...)> Sink();
 
         size_t NumberOfReceivers() const {
             return m_Receivers.size();
@@ -112,16 +116,18 @@ struct event_receiver;
             return false;
         };
 
+
+
         void Clear() {
             m_Receivers.clear();
         }
 
 
-        auto EmitEvent(Args... args) {
+        auto EmitEvent(Args&&... args) {
             if constexpr (std::is_same<R,void>::value) {
                 for (auto& [handle, properties] : m_Receivers) {
                     if (properties.m_ExecutableFunc) {
-                        properties.m_ExecutableFunc(std::forward<Args>(args)...);
+                        properties.m_ExecutableFunc(args...);
                     }
                 }
             }
@@ -129,7 +135,8 @@ struct event_receiver;
                 std::vector<R> vec;
                 for (auto& [handle, properties] : m_Receivers) {
                     if (properties.m_ExecutableFunc) {
-                        vec.push_back(properties.m_ExecutableFunc(std::forward<Args>(args)...));
+
+                        vec.push_back(properties.m_ExecutableFunc(args...));
                     }
                 }
                 return vec;
@@ -137,12 +144,11 @@ struct event_receiver;
         };
 
         event_launcher<R(Args...)>& operator=(const event_launcher<R(Args...)>& other) {
-            return *this;
+            this->m_Receivers = other.m_Receivers;
         }
 
     private:
 
-        
 
         std::unordered_map<size_t, event_launcher_attachment_properties<R(Args...)>> m_Receivers;
         size_t m_MyHash = std::hash<void*>()((void*)this);
@@ -153,18 +159,13 @@ struct event_receiver;
     };
 
 
-
-
-
-
-
     template<typename R, typename... Args>
     struct event_sink<R(Args...)> {
         event_sink(event_launcher<R(Args...)>& sink) : m_Master(&sink) {};
 
 
 
-        size_t Connect(std::function<R(Args&&...)> windowFunc) {
+        size_t Connect(std::function<R(Args...)> windowFunc) {
             static int count = 1;
             size_t hash = std::hash<int>()(count);
             count++;
@@ -178,12 +179,12 @@ struct event_receiver;
 
         }
 
-        void Connect(event_receiver* key, std::function<R(event_receiver*, Args&&...)> windowFunc) {
+        void Connect(event_receiver* key, std::function<R(event_receiver*, Args...)> windowFunc) {
 
             size_t hash = std::hash<void*>()((void*)key);
             
             auto func = ([=](auto&&... args) {
-                return windowFunc(key, std::forward<Args...>(args)...);
+                return windowFunc(key, std::forward<decltype(args)>(args)...);
             });
 
             event_launcher_attachment_properties<R(Args...)> masterProperties;
@@ -252,5 +253,11 @@ struct event_receiver;
 
 
     };
+
+    template<typename R, typename... Args>
+    event_sink<R(Args...)> event_launcher<R(Args...)>::Sink() {
+        return event_sink<R(Args...)>(*this);
+    }
+
 
 };
