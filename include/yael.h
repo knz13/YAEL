@@ -123,7 +123,7 @@ struct event_receiver;
         }
 
 
-        auto EmitEvent(Args&&... args) {
+        auto EmitEvent(Args... args) {
             if constexpr (std::is_same<R,void>::value) {
                 for (auto& [handle, properties] : m_Receivers) {
                     if (properties.m_ExecutableFunc) {
