@@ -28,6 +28,10 @@ endif()
 
 endfunction()
 
+
+option(YAEL_RUN_TESTS "Should run tests for the YAEL library" OFF)
+
+
 #adding extra cmake libs
 include(GNUInstallDirs)
 include(ExternalProject)
@@ -39,5 +43,6 @@ project("yael_project")
 
 #adding subdirectories...
 
-add_subdirectory(tests)
-
+if(YAEL_RUN_TESTS)
+    add_subdirectory(tests)
+endif()
