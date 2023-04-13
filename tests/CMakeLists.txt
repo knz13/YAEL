@@ -81,12 +81,12 @@ set_property(TARGET yael_tests PROPERTY CXX_STANDARD 17)
 #adding libraries...
 
 
-target_link_libraries(yael_tests PUBLIC Catch2::Catch2)
+target_link_libraries(yael_tests PRIVATE Catch2::Catch2)
 
-target_link_libraries(yael_tests PUBLIC Catch2::Catch2WithMain)
+target_link_libraries(yael_tests PRIVATE Catch2::Catch2WithMain)
 
 
 #adding includes...
 
 
-target_include_directories(yael_tests PUBLIC ${PROJECT_SOURCE_DIR}/vendor/catch2/src)
+target_include_directories(yael_tests PRIVATE ${PROJECT_SOURCE_DIR}/vendor/catch2/src)
